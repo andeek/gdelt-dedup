@@ -1,0 +1,57 @@
+---
+title: "Monthly Report on \"An Extensible Model for Deduplication of the GDELT Events Database\""
+author: "Andee Kaplan (andee.kaplan@colostate.edu; 832-526-7947)"
+date: August 2019
+output: pdf_document
+bibliography: refs.bib
+---
+
+# Progress and Plans
+
+1. Description of progress made against each deliverable during the reporting period
+
+    I started working with a graduate student (Casey Schafer) at CSU on Aug 16 with the goal of formulating, implementing, and applying an extensible deduplication model to the GDELT events data before Jan 1, 2020. Casey is a PhD student in Statistics at CSU with a strong background in computation and an interest in learning more about record linkage.
+
+    We have spent the remainder of the month of August getting him up to speed on modern Bayesian methods for performing deduplication and discussed the pros and cons of the different model classes. We have discussed the following papers -- @tancredi2011hierarchical, @sadinle2014detecting, and @steorts2016bayesian.
+
+2. Brief description of significant results
+
+    Our discussions have led us to focus on the methods of @sadinle2014detecting and @steorts2016bayesian because they have both been formulated for the deduplication (rather than the record linkage) task and they are both formulated for categorical data. We are currently deciding between the partition prior of @sadinle2014detecting and the uniform linkage prior of @steorts2016bayesian. We have looked at numerical explorations of the differences in prior and will now turn to the expected posterior difference in the methods.
+
+3. Planned activities for the following reporting period
+
+    Once a method is chosen to move forward with, we will turn to computation and challenges faced specific to the GDELT data.
+
+
+4. List of any LAS-funded trips during reporting period, with description of work presented
+
+    None.
+
+5. Description of any significant meetings/events held (e.g., a focused discovery activity, LAS Symposium) or conducted related to this task
+
+    Casey and I have been meeting weekly and will continue to do so.
+
+
+# Issues
+
+1. Progress on/results obtained related to previously identified problem areas
+
+    None.
+
+
+2. Proposed significant changes to your methodology, goals, milestones, or deliverables
+
+    None.
+
+
+3. New challenges affecting technical performance or schedule, with background
+
+    None.
+
+
+4. Has anything happened to impact your anticipated schedule?
+
+    No.
+
+# References
+

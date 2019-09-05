@@ -1,0 +1,39 @@
+---
+title: "Monthly Report on \"An Extensible Model for Deduplication of the GDELT Events Database\""
+author: "Andee Kaplan (andee.kaplan@colostate.edu; 832-526-7947)"
+date: Month Covered
+output: pdf_document
+bibliography: refs.bib
+---
+
+# Progress and Plans
+
+1. Description of progress made against each deliverable during the reporting period
+
+
+2. Brief description of significant results
+
+
+3. Planned activities for the following reporting period
+
+
+4. List of any LAS-funded trips during reporting period, with description of work presented
+
+
+5. Description of any significant meetings/events held (e.g., a focused discovery activity, LAS Symposium) or conducted related to this task
+
+
+# Issues
+
+1. Progress on/results obtained related to previously identified problem areas
+
+
+2. Proposed significant changes to your methodology, goals, milestones, or deliverables
+
+
+3. New challenges affecting technical performance or schedule, with background
+
+
+4. Has anything happened to impact your anticipated schedule?
+
+
