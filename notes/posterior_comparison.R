@@ -20,6 +20,7 @@ n <- 3
 #Number of variables
 p <-2
 
+total.combs <- 46656
 #All possible values of lambda, where lambda_j = j' => x_j = y_j' in truth, j, j' = 1,2,3
 lambdas <-list(c(1,1,1), c(2,2,2),c(3,3,3), 
                c(1,1,2), c(1,1,3), c(2,2,1), c(2,2,3), c(3,3,1), c(3,3,2),
@@ -51,7 +52,8 @@ lpp <- list()
 lpp2 <- list()
 ppp <- list()
 ppp2 <- list()
-
+all.possible.x <- list()
+all.errors <- list()
 #Loop over all possible lambdas. For one iteration we have one truth (lambda.star).
 #Takes approx 15 minutes to run.
 for (r in 1:length(lambdas)){
@@ -89,13 +91,16 @@ possible.x <- list()
       print(paste("Done generating possible x's for iteration ", i , " of 4096, for lambda ", r, sep = ""))
     }
   }
+  all.possible.x[[r]] <- possible.x
   lambda.star.post <- c()
   lambda.star.post2 <- c()
+  errs <- list()
   ###Part 2 of outer-most loop, determine posterior probabilities of all lambdas based off each valid x,y,z combination.
   for (i in 1:length(YZ$y1)){
     y <- matrix(unlist(YZ[i,1:3]),n,p, byrow = TRUE)
     z <- matrix(unlist(YZ[i,4:6]),n,p, byrow = TRUE)
     X_i <- possible.x[[i]] 
+    errors <- rep(0, nrow(X_i))
     #Loop over all the possible x's for each combination of y and z. 
     #The number of possible x's is a power of 2 determined by how many 1's (distortions) there are in z.
     for (k in 1:nrow(X_i)){
@@ -103,22 +108,24 @@ possible.x <- list()
       lambda.post.probs <- rep(1, length(lambdas))
       #Loop over all possible lambdas, and calculate a posterior probability for each one.  
       for (c in 1:length(lambdas)){
-        is.break <- FALSE
         #Loop over each observation
+        error <- 0
         for (j in 1:n){
           cj <- lambdas[[c]][j]
           #Loop over each variable
           for (l in 1:p){
+            #Find number of errors between x and y.
+            if (x[j,l] != y[lambda.star[j],l]){
+              error <- error+1
+            }
             #For each [j,l] entry, determine if x,y,z and lambda are valid together.
             #Set posterior probability to 0 and break from loops if they are not.
             if (z[j,l] == 0 & x[j,l] != y[cj,l]){
               lambda.post.probs[c] <- 0
-              is.break <- TRUE
-              break
             } 
           }
-          if(is.break){break}
         }
+        errors[k] <- error
       }
       #Normalize lambda.post.probs to sum to 1.
       #lpp is for Steorts, lpp2 is for Sadinle
@@ -128,15 +135,44 @@ possible.x <- list()
       lambda.star.post <- append(lambda.star.post, lpp[r])
       lambda.star.post2 <- append(lambda.star.post2, lpp2[r])
     }
+    errs[[i]] <- errors
     if (i %% 500 == 0){
       print(paste("Done finding posterior probabilities for iteration ", i , " of 4096, for lambda ", r,  sep = ""))
     }
   }
+  
+  
   #Store posterior probabilities of truth for each possible truth.
   lsp[[r]] <- lambda.star.post
   lsp2[[r]] <- lambda.star.post2
+  all.errors[[r]] <- errs
   print(paste("Done with ", r, " of 27 lambdas!", sep = ""))
+
 }
+
+err.df <- data.frame(rep(paste(lambdas[[1]], collapse=","), total.combs), lsp[[1]], lsp2[[1]], unlist(all.errors[[1]]))
+names(err.df) <- c("Lambda", "Posterior_Truth_Steort", "Posterior_Truth_Sadinle", "Number_of_Errors")
+
+for (r in 2:length(lambdas)){
+  new.df <- data.frame(rep(paste(lambdas[[r]], collapse=","), total.combs), lsp[[r]], lsp2[[r]], unlist(all.errors[[r]]))
+  names(new.df) <- names(err.df)
+  err.df <- rbind(err.df, new.df)   
+}
+
+head(err.df)
+save(err.df, file = "./error_dataframe")
+
+
+
+load("./error_dataframe")
+library(ggplot2)
+
+ggplot(err.df, aes(Lambda, Posterior_Truth_Steort, color = Number_of_Errors))+
+  geom_jitter()
+
+ggplot(err.df, aes(Lambda, Posterior_Truth_Steort, color = factor(Number_of_Errors)))+
+  geom_jitter()
+
 
 #Make some plots
 boxplot(lsp, main = "Posterior Probability of Truth for steorts",
@@ -144,6 +180,9 @@ boxplot(lsp, main = "Posterior Probability of Truth for steorts",
         ylab = "Posterior Probability",
         sub = "Red dashed line is mean posterior probability")
 abline(h = mean(unlist(lsp)), col = "red", lty= 2)
+
+
+  
 
 boxplot(lsp2, main = "Posterior Probability of Truth for Sadinle",
         xlab = "Lambda", 
