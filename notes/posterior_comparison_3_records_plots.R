@@ -43,7 +43,7 @@ unique_err.df %>%
             sd = sd(post_prob_truth)) %>%
   arrange(method, Number_of_Errors, Lambda) %>%
   data.frame() %>%
-  tail(100)
+  head(20)
 
 # look at the dsns
 unique_err.df %>% 
