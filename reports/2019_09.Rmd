@@ -17,7 +17,7 @@ bibliography: refs.bib
 
 2. Brief description of significant results
 
-    [Casey, please fill this section with a description of the small experiments you've done and add a plot with explanation. We will also try to add the work you are doing this week here if you finish in time.]
+    [Casey, please fill this section with a description of the small experiments you've done and add a plot with explanation. We will also try to add the work you are doing this week here if you finish in time. If not, don't worry we can add it next month.]
 
 3. Planned activities for the following reporting period
 
