@@ -1,0 +1,56 @@
+---
+title: "Monthly Report on \"An Extensible Model for Deduplication of the GDELT Events Database\""
+author: "Andee Kaplan (andee.kaplan@colostate.edu; 832-526-7947)"
+date: September 2019
+output: pdf_document
+bibliography: refs.bib
+---
+
+# Progress and Plans
+
+1. Description of progress made against each deliverable during the reporting period
+
+    Casey has created a framework to compare the resulting posterior probabilities of a Bayesian hierarchical deduplication model using the uniform prior of @steorts2016bayesian and one using the partitioning prior of @sadinle2014detecting. We have spent September looking at numerical comparisons of small toy size models for completeness, as well as a larger, more realistic scenario. 
+
+    Our goal with this exploration is to choose a suitable model for deduplication of the GDELT events data, while a secondary goal is to choose a suitable model that is a good candidate for extension to a streaming version.
+
+
+2. Brief description of significant results
+
+    [Casey, please fill this section with a description of the small experiments you've done and add a plot with explanation. We will also try to add the work you are doing this week here if you finish in time.]
+
+3. Planned activities for the following reporting period
+
+    We will choose a final model and do preliminary work to prepare the GDELT data for deduplication.
+
+4. List of any LAS-funded trips during reporting period, with description of work presented
+
+None.
+
+5. Description of any significant meetings/events held (e.g., a focused discovery activity, LAS Symposium) or conducted related to this task
+
+    Casey and I meet weekly for one hour.
+
+
+# Issues
+
+1. Progress on/results obtained related to previously identified problem areas
+
+    None.
+
+2. Proposed significant changes to your methodology, goals, milestones, or deliverables
+
+    None.
+    
+3. New challenges affecting technical performance or schedule, with background
+
+    None.
+
+4. Has anything happened to impact your anticipated schedule?
+
+    No.
+    
+
+# References
+
+
