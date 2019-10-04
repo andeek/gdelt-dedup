@@ -21,7 +21,7 @@ bibliography: refs.bib
 
 3. Planned activities for the following reporting period
 
-    We will choose a final model and do preliminary work to prepare the GDELT data for deduplication.
+    We will choose a candidate model and do preliminary work to prepare the GDELT data for deduplication.
 
 4. List of any LAS-funded trips during reporting period, with description of work presented
 
