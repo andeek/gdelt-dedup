@@ -10,42 +10,40 @@ bibliography: refs.bib
 
 1. Description of progress made against each deliverable during the reporting period
 
-    Casey has created a framework to compare the resulting posterior probabilities of a Bayesian hierarchical deduplication model using the uniform prior of @steorts2016bayesian and one using the partitioning prior of @sadinle2014detecting. We have spent September looking at numerical comparisons of small toy size models for completeness, as well as a larger, more realistic scenario. 
+    Casey has created a framework to compare the resulting posterior probabilities of a Bayesian hierarchical deduplication model using the uniform prior of @steorts2016bayesian and one using the partitioning prior of @sadinle2014detecting. We have spent September looking at numerical comparisons of small toy size models ($n = 3$) for completeness, as well as a larger, more realistic scenario (results to follow in the October report). 
 
     Our goal with this exploration is to choose a suitable model for deduplication of the GDELT events data, while a secondary goal is to choose a suitable model that is a good candidate for extension to a streaming version.
 
 
 2. Brief description of significant results
 
-  Changing of the prior from uniform on the partitions (Sadinle) to uniform on matching of observations to entities (Steorts) resulted in minor changes in the full conditional of   matchings for a small sample size. For a given matching, we measured the posterior probability of obtaining this true matching. For matchings where the prior probabilities differed significantly between the two prior specifications, we found the posterior probability to also have a relatively higher difference. The matchings where this occurred were matchings where all observations coresponded to the same underlying entity, in which cases the Sadinle prior put twice as much weight on these matchings as the Steorts prior. The following plots show the change in posterior probability of truth for Steorts and Sadinle priors, where each lambda corresponds to a unique matching of observations to entities for n=3.
+    Changing of the prior from uniform on the partitions (Sadinle) to uniform on matching of observations to entities (Steorts) resulted in minor changes in the full conditionals of matchings for a small sample size. For a given matching, we measured the posterior conditional probability of obtaining this true matching. 
   
-```{r, echo=FALSE}
-load("../results/posterior_comparison_3_records.Rdata")
-attach(err.df)
-boxplot(Posterior_Truth_Steort~Lambda, main = "Posterior Probability of Truth for Steorts",
-         xlab = "Lambda", 
-         ylab = "Posterior Probability",
-         sub = "Red dashed line is mean posterior probability")
-abline(h = mean(Posterior_Truth_Steort), col = "red", lty= 2)
-
-boxplot(Posterior_Truth_Sadinle~Lambda, main = "Posterior Probability of Truth for Sadinle",
-         xlab = "Lambda", 
-         ylab = "Posterior Probability",
-         sub = "Red dashed line is mean posterior probability")
-abline(h = mean(Posterior_Truth_Sadinle), col = "red", lty= 2)
-
-
-```
+    ```{r, echo=FALSE, fig.height = 3}
+    load("../results/posterior_comparison_3_records.Rdata")
+    attach(err.df)
+    boxplot(Posterior_Truth_Steort~Lambda, main = "Posterior Conditional Probability of Truth for Steorts",
+             xlab = "Lambda", 
+             ylab = "Posterior Probability",
+             sub = "Red dashed line is mean conditional posterior probability")
+    abline(h = mean(Posterior_Truth_Steort), col = "red", lty= 2)
+    
+    boxplot(Posterior_Truth_Sadinle~Lambda, main = "Posterior Conditional Probability of Truth for Sadinle",
+             xlab = "Lambda", 
+             ylab = "Posterior Probability",
+             sub = "Red dashed line is mean conditional posterior probability")
+    abline(h = mean(Posterior_Truth_Sadinle), col = "red", lty= 2)
+    ```
+    
+    For matchings where the prior probabilities differed significantly between the two prior specifications, we found the posterior conditional probability to also have a relatively higher difference. The matchings where this occurred were matchings where all observations coresponded to the same underlying entity, in which cases the Sadinle prior put twice as much weight on these matchings as the Steorts prior. The following plots show the change in posterior probability of truth for Steorts and Sadinle priors, where each $\lambda$ corresponds to a unique matching of observations to entities for $n=3$.
   
-  
-
 3. Planned activities for the following reporting period
 
     We will choose a candidate model and do preliminary work to prepare the GDELT data for deduplication.
 
 4. List of any LAS-funded trips during reporting period, with description of work presented
 
-None.
+    None.
 
 5. Description of any significant meetings/events held (e.g., a focused discovery activity, LAS Symposium) or conducted related to this task
 
