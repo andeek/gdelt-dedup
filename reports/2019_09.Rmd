@@ -17,7 +17,27 @@ bibliography: refs.bib
 
 2. Brief description of significant results
 
-    [Casey, please fill this section with a description of the small experiments you've done and add a plot with explanation. We will also try to add the work you are doing this week here if you finish in time. If not, don't worry we can add it next month.]
+  Changing of the prior from uniform on the partitions (Sadinle) to uniform on matching of observations to entities (Steorts) resulted in minor changes in the full conditional of   matchings for a small sample size. For a given matching, we measured the posterior probability of obtaining this true matching. For matchings where the prior probabilities differed significantly between the two prior specifications, we found the posterior probability to also have a relatively higher difference. The matchings where this occurred were matchings where all observations coresponded to the same underlying entity, in which cases the Sadinle prior put twice as much weight on these matchings as the Steorts prior. The following plots show the change in posterior probability of truth for Steorts and Sadinle priors, where each lambda corresponds to a unique matching of observations to entities for n=3.
+  
+```{r, echo=FALSE}
+load("../results/posterior_comparison_3_records.Rdata")
+attach(err.df)
+boxplot(Posterior_Truth_Steort~Lambda, main = "Posterior Probability of Truth for Steorts",
+         xlab = "Lambda", 
+         ylab = "Posterior Probability",
+         sub = "Red dashed line is mean posterior probability")
+abline(h = mean(Posterior_Truth_Steort), col = "red", lty= 2)
+
+boxplot(Posterior_Truth_Sadinle~Lambda, main = "Posterior Probability of Truth for Sadinle",
+         xlab = "Lambda", 
+         ylab = "Posterior Probability",
+         sub = "Red dashed line is mean posterior probability")
+abline(h = mean(Posterior_Truth_Sadinle), col = "red", lty= 2)
+
+
+```
+  
+  
 
 3. Planned activities for the following reporting period
 

@@ -22,12 +22,13 @@ abs(Sadinle[B_n[n]] - Stoert[B_n[n]])
 
 #n = 3
 n <-3
+
 Sadinle <- rep(1/B_n[n], B_n[n])
 Stoert <- c(n, 
             rep(n*(n-1), n),
             factorial(n))/n^n
 plot(Stoert, col = "Red", type = "b", xlab = "Partition Number", ylab= "Prior Probability", main = "Stoert (Red) vs. Sadinle (Black)")
-points(Sadinle)
+points(Sadinle, type = "b")
 sum(Sadinle)
 sum(Stoert)
 Sadinle[1] - Stoert[1]
@@ -42,7 +43,7 @@ Stoert <- c(n,
             rep(factorial(n),choose(n,2)),
             factorial(n))/n^n
 plot(Stoert, col = "Red", type = "b", xlab = "Partition Number", ylab= "Prior Probability", main = "Stoert (Red) vs. Sadinle (Black)")
-points(Sadinle)
+points(Sadinle, type = "b")
 sum(Sadinle)
 sum(Stoert)
 Sadinle[1] - Stoert[1]

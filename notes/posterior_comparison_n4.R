@@ -1,5 +1,5 @@
 rm(list=ls())
-
+library(tidyr)
 
 ###
 # Steorts et. al. (2015) and Sadinle (2014) papers give alternative ways to specify priors.
@@ -14,36 +14,70 @@ rm(list=ls())
 # Plots of posterior probabilities for all 27 possible lambdas are included at end.
 
 #------------------------------------------------------------------------------------------------
+valid.lambda <- function(x,z,x.real){
+  diffs <- sum(x[z == 0] != x.real[z == 0])
+  return(diffs ==0)
+}
 
+get.x.real<- function(y, lambda){ 
+  c(y[lambda[1],], y[lambda[2],], y[lambda[3],], y[lambda[4],]) %>%
+    rbind()  %>%
+    t() %>%
+    as.vector()
+}
 #Number of observations
-n <- 3
+n <- 4
 #Number of variables
 p <-2
 
 total.combs <- 46656
 #All possible values of lambda, where lambda_j = j' => x_j = y_j' in truth, j, j' = 1,2,3
-lambdas <-list(c(1,1,1), c(2,2,2),c(3,3,3), 
-               c(1,1,2), c(1,1,3), c(2,2,1), c(2,2,3), c(3,3,1), c(3,3,2),
-               c(1,2,1), c(1,3,1), c(3,2,3), c(3,1,3), c(2,3,2), c(2,1,2),
-               c(1,2,2), c(1,3,3), c(2,1,1), c(2,3,3), c(3,2,2), c(3,1,1), 
-               c(1,2,3), c(1,3,2), c(2,1,3), c(2,3,1), c(3,1,2), c(3,2,1))
+lambdas <- expand.grid(c(1,2,3,4),c(1,2,3,4),c(1,2,3,4),c(1,2,3,4))
+t <- length(lambdas[,1])
+
+possible.lambdas <- list(c(1,1,1,1), 
+                c(1,1,1,2), c(1,1,2,1),c(1,2,1,1), c(2,1,1,1),
+                c(1,1,2,2), c(1,2,1,2), c(1,2,2,1), 
+                c(1,1,2,3), c(1,2,1,3), c(1,2,3,1), c(2,1,1,3), c(2,1,3,1), c(2,3,1,1),
+                c(1,2,3,4))
 
 
+
+lambda.sadinle.priors <- rep(0, t)
+for(c in 1:t){
+  lambda <- unlist(lambdas[c,])
+  numb <- lambda %>%
+    unique() %>%
+    length()
+  if (numb == 1){
+    lambda.sadinle.priors[c] <- 1/60
+  } else if (numb == 2){
+    lambda.sadinle.priors[c] <- 1/180
+  } else {
+    lambda.sadinle.priors[c] <- 1/360 
+    }
+}
+
+usable.lambdas <- list(c(1,1,1,1), c(2,1,1,1), c(2,2,1,1), c(3,2,1,1), c(4,3,2,1))
+usable.indices <- c(1,2,6,7, 28)
 #Generate all combinations of y and z (YZ) and all combinations of x (X), the data.
 y1 <- list(c(0,0), c(0,1), c(1,0), c(1,1))
 y2 <- y1
 y3 <- y2  
+y4 <- y1
 z1 <- y1
 z2 <- y1
 z3 <- y1
-X <- expand.grid(y1,y2,y3)
-names(X) <- c("x1", "x2", "x3")
+z4 <- y1
+X <- expand.grid(y1,y2,y3, y4)
+names(X) <- c("x1", "x2", "x3", "x4")
+X_nice <- apply(X, FUN =unlist, 1) %>%
+          t()
 
-YZ <- expand.grid(y1,y2,y3, z1, z2, z3)
-names(YZ) <- c("y1", "y2", "y3", "z1", "z2", "z3")
+YZ <- expand.grid(y1,y2,y3, y4, z1, z2, z3, z4)
+names(YZ) <- c("y1", "y2", "y3", "y4", "z1", "z2", "z3", "z4")
 
-#Give priors to differentiate between Sadinle and Steorts methods
-lambda.sadinle.priors <- c(rep(1/15, 3), rep(1/30, 24))
+
 
 #Initiate lists to store posterior probabilities
 lsp <- list()
@@ -56,110 +90,84 @@ all.possible.x <- list()
 all.errors <- list()
 #Loop over all possible lambdas. For one iteration we have one truth (lambda.star).
 #Takes approx 15 minutes to run.
-for (r in 1:length(lambdas)){
-lambda.star <- lambdas[[r]]
-possible.x <- list()
+start1<- Sys.time()
+for (r in 1:length(usable.lambdas)){
+  lambda.star <- usable.lambdas[[r]]
+  possible.x <- list()
   ###Part 1 of outer-most loop, generate all possible data, X, for a given lambda.star and all combintations of y and z.
   for (i in 1:length(YZ$y1)){
-    y <- matrix(unlist(YZ[i,1:3]),n,p, byrow =TRUE)
-    z <- matrix(unlist(YZ[i,4:6]),n,p, byrow =TRUE)
-    xs <- c()
-    #Loop over all 2^2^3=64 potential X's and determine which ones are possible.
-    for (k in 1:length(X$x1)){
-      x <- matrix(unlist(X[k,]),n,p, byrow = TRUE)
-      marker <- 0
-      #Loop over each observation
-      for (j in 1:n){
-        cj <- lambda.star[j]
-        #Loop over each variable
-        for (l in 1:p){
-          #Determine if [j,l] entries of x,y,z and lambda are valid, mark the entry by adding a 1 to marker.
-          if (z[j,l] != 0 | x[j,l] == y[cj,l]){
-            marker <- marker+1
-          }
-        }
-      }
-      #We need all p*n  = 6 possible [j,l] entries to be valid for that whole x to be possible,
-      #thus marker needs to be 6, in which case we add to our ongoing list of possible x's.
-      if (marker == 6){
-        xs <- rbind(xs, X[k,])
-      }
-    }
-    #Store all possibles x's for the y-z combination i.
-    possible.x[[i]] <- xs
+    y <- matrix(unlist(YZ[i,1:n]),n,p, byrow =TRUE)
+    x.real <- as.vector(t(rbind(y[lambda.star[1],], y[lambda.star[2],], y[lambda.star[3],], y[lambda.star[4],])))
+    z <- unlist(YZ[i,(n+1):(2*n)])
+    good.x <- apply(X_nice, FUN = valid.lambda, 1, z= z, x.real = x.real)
+    possible.x[[i]] <- X_nice[good.x,]
     if(i %% 500 == 0){
-      print(paste("Done generating possible x's for iteration ", i , " of 4096, for lambda ", r, sep = ""))
-    }
+      end1 <- Sys.time()
+      print(paste("Done generating possible x's for iteration ", i , " of 65536, for lambda ", r, sep = ""))
+      print(end1 - start1)
+      start1 <- Sys.time()
+      }
   }
   all.possible.x[[r]] <- possible.x
-  lambda.star.post <- c()
-  lambda.star.post2 <- c()
   errs <- list()
-  ###Part 2 of outer-most loop, determine posterior probabilities of all lambdas based off each valid x,y,z combination.
+  lambda.star.post <- list()
+  lambda.star.post2 <- list()
+  start1 <- Sys.time()
+  which.lambda <- usable.indices[r]
+    ###Part 2 of outer-most loop, determine posterior probabilities of all lambdas based off each valid x,y,z combination.
   for (i in 1:length(YZ$y1)){
-    y <- matrix(unlist(YZ[i,1:3]),n,p, byrow = TRUE)
-    z <- matrix(unlist(YZ[i,4:6]),n,p, byrow = TRUE)
-    X_i <- possible.x[[i]] 
-    errors <- rep(0, nrow(X_i))
-    #Loop over all the possible x's for each combination of y and z. 
-    #The number of possible x's is a power of 2 determined by how many 1's (distortions) there are in z.
-    for (k in 1:nrow(X_i)){
-      x <- matrix(unlist(X_i[k,]),n,p, byrow = TRUE)
-      lambda.post.probs <- rep(1, length(lambdas))
-      #Loop over all possible lambdas, and calculate a posterior probability for each one.  
-      for (c in 1:length(lambdas)){
-        #Loop over each observation
-        error <- 0
-        for (j in 1:n){
-          cj <- lambdas[[c]][j]
-          #Loop over each variable
-          for (l in 1:p){
-            #Find number of errors between x and y.
-            if (x[j,l] != y[lambda.star[j],l]){
-              error <- error+1
-            }
-            #For each [j,l] entry, determine if x,y,z and lambda are valid together.
-            #Set posterior probability to 0 and break from loops if they are not.
-            if (z[j,l] == 0 & x[j,l] != y[cj,l]){
-              lambda.post.probs[c] <- 0
-            } 
-          }
-        }
-      }
-      errors[k] <- error
-      #Normalize lambda.post.probs to sum to 1.
-      #lpp is for Steorts, lpp2 is for Sadinle
+    y <- matrix(unlist(YZ[i,1:n]),n,p, byrow = TRUE)
+    x.real <- c(y[lambda.star[1],], y[lambda.star[2],], y[lambda.star[3],], y[lambda.star[4],]) %>%
+              rbind() %>%
+              t() %>%
+              as.vector()
+    z <- unlist(YZ[i,(n+1):(2*n)])
+    
+    X_i <- possible.x[[i]]
+    #Rearrange y to get it in the correct order based off lambda
+    all.x.real <- t(apply(lambdas,FUN= get.x.real, 1, y = y))
+    
+    if (is.null(dim(X_i))){
+      errs[[i]] <- sum(abs(x.real - X_i))
+      lambda.post.probs <- as.numeric(apply(all.x.real, FUN = valid.lambda, 1, x= X_i, z= z))
       lpp <- lambda.post.probs/sum(lambda.post.probs)
       lpp2 <- lambda.post.probs*lambda.sadinle.priors/sum(lambda.post.probs*lambda.sadinle.priors)
-      #We are specifically interested in the posterior probability for the true lambda, lambda.star (the rth value in lpp).  
-      lambda.star.post <- append(lambda.star.post, lpp[r])
-      lambda.star.post2 <- append(lambda.star.post2, lpp2[r])
+      lambda.star.post[[i]] <-  lpp[which.lambda]
+      lambda.star.post2[[i]] <- lpp2[which.lambda]
+    }else{
+      errs[[i]] <- apply(X_i, FUN = function(x){sum(abs(x.real - x))}, 1)
+      lambda.post.probs <- t(apply(X_i, FUN = function(x){as.numeric(apply(all.x.real, FUN = valid.lambda, 1, x= x, z= z))}, 1))
+      lpp <- lambda.post.probs/rowSums(lambda.post.probs)
+      lpp2 <- lambda.post.probs*lambda.sadinle.priors/rowSums(lambda.post.probs*lambda.sadinle.priors)
+      lambda.star.post[[i]] <-  lpp[,which.lambda]
+      lambda.star.post2[[i]] <- lpp2[,which.lambda]
     }
-    errs[[i]] <- errors
     if (i %% 500 == 0){
-      print(paste("Done finding posterior probabilities for iteration ", i , " of 4096, for lambda ", r,  sep = ""))
+      end1 <- Sys.time()
+      print(paste("Done finding posterior probabilities for iteration ", i , " of 65536, for lambda ", r,  sep = ""))
+      print(end1 - start1)
+      start1 <- Sys.time()
     }
   }
-  
+
   #Store posterior probabilities of truth for each possible truth.
   lsp[[r]] <- lambda.star.post
   lsp2[[r]] <- lambda.star.post2
   all.errors[[r]] <- errs
-  print(paste("Done with ", r, " of 27 lambdas!", sep = ""))
-
+  print(paste("Done with ", r, " of 5 lambdas!", sep = ""))
 }
+total.combs <- 65536
+err.df4 <- data.frame(rep(paste(usable.lambdas[1,], collapse=","), total.combs), lsp[[1]], lsp2[[1]], unlist(all.errors[[1]]))
+names(err.df4) <- c("Lambda", "Posterior_Truth_Steort", "Posterior_Truth_Sadinle", "Number_of_Errors")
 
-err.df <- data.frame(rep(paste(lambdas[[1]], collapse=","), total.combs), lsp[[1]], lsp2[[1]], unlist(all.errors[[1]]))
-names(err.df) <- c("Lambda", "Posterior_Truth_Steort", "Posterior_Truth_Sadinle", "Number_of_Errors")
-
-for (r in 2:length(lambdas)){
-  new.df <- data.frame(rep(paste(lambdas[[r]], collapse=","), total.combs), lsp[[r]], lsp2[[r]], unlist(all.errors[[r]]))
+for (r in 2:length(usable.lambdas)){
+  new.df <- data.frame(rep(paste(lambdas[r,], collapse=","), total.combs), lsp[[r]], lsp2[[r]], unlist(all.errors[[r]]))
   names(new.df) <- names(err.df)
-  err.df <- rbind(err.df, new.df)   
+  err.df4 <- rbind(err.df4, new.df)   
 }
 
-head(err.df)
-save(err.df, file = "./error_dataframe")
+head(err.df4)
+save(err.df4, file = "./error_dataframe_n_4")
 
 length(unlist(all.possible.x))
 
@@ -188,7 +196,7 @@ boxplot(lsp, main = "Posterior Probability of Truth for steorts",
 abline(h = mean(unlist(lsp)), col = "red", lty= 2)
 
 
-  
+
 
 boxplot(lsp2, main = "Posterior Probability of Truth for Sadinle",
         xlab = "Lambda", 
@@ -208,7 +216,7 @@ hist(unlist(lapply(lsp, mean)), add = TRUE, col = "red",  breaks = seq(.1,.22, .
 #par(mfrow=c(4,4))
 #par(mfrow=c(1,1))
 #for (i in 1:16){
- # plot(ppp[[i]], col = "Red", type = "b", ylim = c(0, .3333), xlab = "Partition Number", ylab= "Prior Probability")  
+# plot(ppp[[i]], col = "Red", type = "b", ylim = c(0, .3333), xlab = "Partition Number", ylab= "Prior Probability")  
 #  points(ppp2[[i]], col = "blue", type = "b")
 #}
 
@@ -218,13 +226,13 @@ hist(unlist(lapply(lsp, mean)), add = TRUE, col = "red",  breaks = seq(.1,.22, .
 #}
 
 #for (i in 33:48){
- # plot(ppp[[i]], col = "Red", type = "b", ylim = c(0, .3333), xlab = "Partition Number", ylab= "Prior Probability")
+# plot(ppp[[i]], col = "Red", type = "b", ylim = c(0, .3333), xlab = "Partition Number", ylab= "Prior Probability")
 #  points(ppp2[[i]], col = "blue", type = "b")
 #}
 
 #for (i in 49:64){
- # plot(ppp[[i]], col = "Red", type = "b", ylim = c(0, .3333), xlab = "Partition Number", ylab= "Prior Probability")
-  #points(ppp2[[i]], col = "blue", type = "b")
+# plot(ppp[[i]], col = "Red", type = "b", ylim = c(0, .3333), xlab = "Partition Number", ylab= "Prior Probability")
+#points(ppp2[[i]], col = "blue", type = "b")
 #}
 
 
