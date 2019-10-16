@@ -7,7 +7,6 @@ set.seed(3894)
 #This function calculates the overall probability of correctly clustering a point with another.
 #Lambda.star is the truth. Does not account for correctly not clustering a singleton.
 post.prob.match <- function(lambda, lambda.star){
-  n <- length(lambda)
   uni.lamb <- unique(lambda.star)
   u <- length(uni.lamb)
   c<-0
@@ -205,6 +204,81 @@ ls.possible.sims <- matrix(0, gibbs.reps, Sims)
   
   save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, theta.gibbs, ppm,
        num.distortions, num.errors, num.clusters, file = "./gibbs_output_n100.RData" )
+  
+  
+  load("./gibbs_output_n100.RData")
+  
+  
+  
+  #Matrix of probability of matches for lambdas i and  j
+  ppm.actual <- function(lambda.gibbs){
+    gibbs.reps <- dim(lambda.gibbs)[2]
+    ppm.real <- matrix(0,n,n)
+    for (i in 1:n){
+      lsi <- lambda.gibbs[i,]
+      for (j in 1:n){
+        lsj <- lambda.gibbs[j,]
+        ppm.real[i,j] <- sum(lsi == lsj)/gibbs.reps
+        }
+    }
+  }
+  
+  #Highly ad hoc, but we can formalize later.
+  plot(as.vector(ppm.real[ppm.real < 1]))
+  abline(h = .01375, col = "Red")
+  
+  #This is interesting, isn't it?
+  #We should expect under a null taht the probability of match would be centered at .01
+  #Can calculate variance as it is binomial
+  sdg <- sqrt(gibbs.reps*.01*.99*(1/gibbs.reps^2))
+  hist(as.vector(ppm.real[ppm.real < 1]))
+  abline(v= c(.01 + 2*sdg, .01 - 2*sdg), col = "red")
+  match.matrix <- ppm.real > .01375
+  
+  #Calculate the false negative rate
+  fnr <- function(lambda.star, mm){
+    n <- dim(mm)[1]
+    count.num <- 0
+    count.den <- 0
+    for (i in 1:(n-1)){
+      lsi <- lambda.star[i]
+      for (j in (i+1):n){
+        lsj <- lambda.star[j]
+        #If they match in truth, do they match in estimation?
+        if (lsi == lsj){
+          count.den <- count.den + 1
+          count.num <- count.num + mm[i,j]
+        }
+      }
+    }
+    1- count.num/count.den
+  }
+  
+  #Calculate the false positive rate
+  fpr <- function(lambda.star, mm){
+    n <- dim(mm)[1]
+    count.num <- 0
+    count.den <- 0
+    for (i in 1:(n-1)){
+      lsi <- lambda.star[i]
+      for (j in (i+1):n){
+        lsj <- lambda.star[j]
+        #If they match in truth, do they match in estimation?
+        if (lsi != lsj){
+          count.den <- count.den + 1
+          count.num <- count.num + mm[i,j]
+        }
+      }
+    }
+    count.num/count.den
+  } 
+  
+
+  # probability of match is almost exactly the same as fpr. That should not necessarily be the case.
+  (sum(match.matrix)-n)/(length(as.vector(match.matrix)) - n)
+  fpr(lambda.star, match.matrix)
+  1-fnr(lambda.star, match.matrix)
+  
   
   ncls <- table(table(lambda.star))[1:4]
   plot(num.clusters[1,], type = "l")
