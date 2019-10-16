@@ -1,14 +1,33 @@
 rm(list =ls())
 library(gtools)
 library(tidyr)
+library(utils)
 set.seed(3894)
 
+#This function calculates the overall probability of correctly clustering a point with another.
+#Lambda.star is the truth. Does not account for correctly not clustering a singleton.
+post.prob.match <- function(lambda, lambda.star){
+  n <- length(lambda)
+  uni.lamb <- unique(lambda.star)
+  u <- length(uni.lamb)
+  c<-0
+  prob <-0
+  for (j in 1:u){
+    same.inds <- which(lambda.star ==  uni.lamb[j])
+    group <- lambda[same.inds]
+    if (length(group) !=1){
+      combs <- combn(group, 2)
+      c <- c+ length(combs)/2
+      prob <- prob + sum(apply(combs, FUN = function(x){x[1] == x[2]}, 2))}
+  }
+  prob/c
+}
 
 
 ### Gibbs Sampler
 
 #500 observations
-n <- 500
+n <- 100
 #2 variables
 p <- 2
 #5 categories per variable
@@ -18,7 +37,7 @@ cats <- 5
 lambda.star <- sample(1:n, replace = TRUE)
 
 #Simulated but now fixed probabilities
-a12 <- c(.5,.6)
+a12 <- c(.25,.25)
 b12 <- c(1,1)
 beta.sim <- rbeta(p,a12, b12)
 mu1 <- c(.2,.2,.2,.2,.2)
@@ -33,18 +52,20 @@ x.sim <- array(0,c(n,p,cats))
 for (l in 1:p){
   y.sim[,l,] <- t(rmultinom(n, 1, theta.sim[l,]))
   z.sim[,l] <- rbinom(n, 1, beta.sim[l])
-
 }
 
 #Initialize values for Gibbbs Sampler
 mu <- rbind(mu1,mu2)
-beta.init <- c(.5,.5)
+beta.init <- c(.2,.2)
 theta.init <- matrix(.2, nrow = 2, ncol = 5)
 
 z <- cbind(rbinom(n, 1, beta.init[1]), rbinom(n,1, beta.init[2]))
 y <- y.sim
+lambda.init <- sample(1:n, replace = TRUE)
+N.init <- length(unique(lambda.init))
+uni.lam <- unique(lambda.init)
 for (l in 1:p){
-  y[,l,] <- t(rmultinom(n, 1, theta.init[l,]))
+  y[uni.lam,l,] <- t(rmultinom(N.init, 1, theta.init[l,]))
 }
 
 
@@ -53,12 +74,13 @@ for (l in 1:p){
 #Everything above is fixed for all simulations
 #Everything below changes for each simulation
 Sims <- 100
+gibbs.reps <- 10000
 num.distortions.sims <- array(0, dim = c(n,gibbs.reps,Sims)) 
 num.errors.sims <- array(0, dim= c(n,gibbs.reps, Sims))
-num.error.star.sims <- array(0, dim = c(n,gibbs.reps, Sims))
+num.errors.star.sims <- array(0, dim = c(n,gibbs.reps, Sims))
 ls.possible.sims <- matrix(0, gibbs.reps, Sims)
 
-for(s in 1:Sims){
+#for(s in 1:Sims){
  
   for (l in 1:p){
   #Simulate data, X
@@ -73,7 +95,6 @@ for(s in 1:Sims){
   lambda <- rep(0, n)
 
   #Allocate space for samples
-  gibbs.reps <- 1000
   beta.gibbs <-  matrix(0,nrow = p, ncol = gibbs.reps)
   theta.gibbs <- array(0, dim = c(p,cats,gibbs.reps))
   z.gibbs <- array(0,dim = c(n,p, gibbs.reps))
@@ -83,7 +104,8 @@ for(s in 1:Sims){
   num.distortions <- matrix(0, n, gibbs.reps)
   num.errors <- matrix(0, n , gibbs.reps)
   num.errors.star <- matrix(0, n, gibbs.reps)
-  ls.possible <- rep(0,gibbs.reps)
+  num.clusters <- matrix(0, 4, gibbs.reps)
+  ppm <- rep(0,gibbs.reps)
   start <- Sys.time()
   #Start Gibbs Sampler
   for(r in 1:gibbs.reps){
@@ -100,11 +122,12 @@ for(s in 1:Sims){
       }
       bad <- union(bad1,bad2)
       good <- setdiff(1:n, bad)
-      ls.possible[r] <- ls.possible[r] + lambda.star[j] %in% good
       lambda[j] <- sample(rep(good,2),1)
     }
   
-    #When  and where to use reduced y's?
+    num.clusters[,r] <-  table(table(lambda), useNA = "always")[1:4]
+    ppm[r] <- post.prob.match(lambda,lambda.star)
+    #When and where to use reduced y's?
   
     N[r] <- length(unique(lambda))
     lam.uni <- unique(lambda)
@@ -127,16 +150,23 @@ for(s in 1:Sims){
                    rdirichlet(1, dir[2,]))
   
     #Sample y's
+    #I think the paper gets the indexing of j.prime incorrect (should go to n, not N)
+    #So I did what I think the paper is trying to say.
+    #Basically I only sample the y's that have lambdas pointing to it.
+    #This approach does not lead to interpretting y, but I don't think we should care,
+    #because it does not affect lambda, and we just want to know whether two x's point 
+    #to the same y, not which exact label it is (which is arbitrary)
     for (j.prime in 1:N[r]){
       #The js are all j's in R_ij.prime
-      js <- which(lambda == j.prime)
+      which.y <- lam.uni[j.prime]
+      js <- which(lambda == which.y)
       len <- length(js)
       for (l in 1:p){
-        if (len != 0 & sum(z[js,l]) != len){
+        if (sum(z[js,l]) != len){
           ind <- js[z[js,l]==0][1]
-          y[j.prime,l,] <- x[ind, l,]
+          y[which.y,l,] <- x[ind, l,]
         } else { 
-          y[j.prime,l,] <-  t(rmultinom(1,1,theta[l,]))
+          y[which.y,l,] <-  t(rmultinom(1,1,theta[l,]))
           }
       }
     }
@@ -172,6 +202,26 @@ for(s in 1:Sims){
   
     if(r %% 100 == 0){print(paste("Done with Gibbs Sample ", r, " of ", gibbs.reps, sep = ""))}
   }
+  
+  save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, theta.gibbs, ppm,
+       num.distortions, num.errors, num.clusters, file = "./gibbs_output_n100.RData" )
+  
+  ncls <- table(table(lambda.star))[1:4]
+  plot(num.clusters[1,], type = "l")
+  abline(h= ncls[1], col = "red")
+  plot(num.clusters[2,], type = "l")
+  abline(h=ncls[2], col = "red")
+  plot(num.clusters[3,], type = "l")
+  abline(h=ncls[3], col = "red")
+  plot(num.clusters[4,], type = "l")
+  abline(h=ncls[4], col = "red")
+  
+  sum(lambda.gibbs[1, ] == lambda.gibbs[70,])/gibbs.reps
+  plot(lambda)
+  plot(ppm, type = "l")
+  
+  post.prob.match(lambda.star,lambda.star)
+  
   end <- Sys.time()
   print(paste("Done with Gibbs Sampler ", s, " of ", Sims, " in ", end - start, sep = ""))
 
@@ -181,6 +231,9 @@ for(s in 1:Sims){
   ls.possible.sims[,s] <- ls.possible
 }
 
+save(num.distortions.sims, num.errors.sims, num.errors.star.sims, ls.possible.sims, file = "./notes/gibbs_output")
+
+
 plot(beta.gibbs[1,], type = "l")
 plot(beta.gibbs[2,], type = "l")
 
@@ -188,5 +241,6 @@ plot(N, type = "l")
 abline(h = length(unique(lambda.star)), col = "red")
 abline(h = mean(N), col = "blue")
 
-
-
+rm(list=ls())
+load("./notes/gibbs_output")
+str(num.distortions.sims)
