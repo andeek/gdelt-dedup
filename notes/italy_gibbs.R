@@ -1,27 +1,76 @@
 library(italy)
-head(italy10)
-apply(italy10, FUN = function(x)length(unique(x)), 2)
-italy1 <- italy10[italy10$IREG == 1,c(3,6,7,11)]
+library(dplyr)
+library(tidyr)
 
-cats <- apply(italy, FUN = function(x)length(unique(x)), 2)
-p <- 4
+#PARENT is ???
+#SEX is sex
+#ANASC is (probably) year of birth
+#NASCREG is region of birth
+#CIT is (probably) Italian citizenship
+#ACOM4C is town size
+#STUDIO is ???
+#Q is working status
+#QUAL is employment status
+#SETT is branch of activity
+#IREG is region
+
+#The only thing missing is highest education level obtained
+head(italy10)
+head(italy08)
+italy10.1 <- italy10[italy10$IREG == 1,-c(1,8,12)]
+italy08.1 <- italy08[italy08$IREG == 1, -c(1,8,12)]
+italy1 <- rbind(italy08.1[1:250,], italy10.1[1:250,])
+IDs <- c(italy08$id[italy08$IREG ==1][1:250], italy10$id[italy10$IREG == 1][1:250])
+head(IDs)
+
+head(italy1)
+head(italy08[italy08$IREG==1,])
+
+
+
+cats <- apply(italy1, FUN = function(x)length(unique(x)), 2)
+p <- length(cats)
 cats
+italy1$PARENT <- italy1$PARENT -1 
 italy1$SEX <- italy1$SEX - 1
+#Year 0 will now correspond to 1909
+italy1$ANASC <- italy1$ANASC - 1909
+italy1$NASCREG <- italy1$NASCREG - 1
 italy1$CIT <- italy1$CIT - 1
 italy1$ACOM4C
+italy1$Q <- italy1$Q - 1
+italy1$QUAL <- italy1$QUAL - 1
 italy1$SETT <- italy1$SETT - 1
 
 
 x <- italy1
+n <- length(IDs)
+N <- length(unique(IDs))
 
-
+#Create sensible lambda vector based off IDs
+lambda.star <- rep(0, n)
+for (u in unique(IDs)){
+  lambda.star[IDs == u] <- max(lambda.star)+1
+}
 
 
 #-------------------------------------------------------------------------------------
 library(gtools)
-library(tidyr)
 library(utils)
 set.seed(2020)
+
+
+#Checks to see if x,y,z are valid combination for sampling of lambdas
+valid.xyz <- function(x,y,z){
+  if( is.null(dim(x))){
+    sum(x*(1-z) == y*(1-z))==p
+  }
+  else{
+  rowSums(x*(1-z) == y*(1-z))==p
+  }
+}
+
+
 
 #This function calculates the overall probability of correctly clustering a point with another.
 #Lambda.star is the truth. Does not account for correctly not clustering a singleton.
@@ -42,47 +91,42 @@ post.prob.match <- function(lambda, lambda.star){
   prob/c
 }
 
-
-
-n <- dim(italy1)[1]
-
 #Prior values
-a <- rep(.1,p)
-b <- rep(1, p)
+a <- rep(.05,p)
+b <- rep(.95, p)
 
 
 #Initialize values for Gibbbs Sampler
 theta <- list()
-theta.init <- list()
-theta.init[[1]] <- c(.5,.5) 
-theta.init[[2]] <- c(.95,.05)
-theta.init[[3]] <- c(.25,.25,.25,.25)
-theta.init[[4]] <- c(.2,.2,.2,.2,.2)
+mu <-lapply(cats, FUN = function(x){rep(1/x, x)})
+theta.init <- mu 
 
-mu <- theta.init
-beta.init <- c(.1,.1, .1, .1)
+beta.init <- rep(.05,p)
 
 
-z <- cbind(rbinom(n, 1, beta.init[1]), rbinom(n, 1, beta.init[2]),
-           rbinom(n, 1, beta.init[3]), rbinom(n, 1, beta.init[4]))
+z <- matrix(rbinom(n*p, 1, beta.init), n,p)
 
-y <- matrix(0, n, p)
-lambda.init <- sample(1:n, replace = TRUE)
-N.init <- length(unique(lambda.init))
-uni.lam <- unique(lambda.init)
+
+y <- x
+lambda <- 1:n
+
+
+
+
 for (l in 1:p){
-  y[uni.lam,l] <- rmultinom(N.init, 1, theta.init[[l]]) %>%
-                  apply(FUN = function(x) which(x==1), 2) - 1
+  x.ind <- which(z[,l] == 1)
+  y.ind <- lambda[x.ind]
+  y[y.ind,l] <- rmultinom(sum(z[,l]), 1, theta.init[[l]]) %>%
+    apply(FUN = function(x) which(x==1), 2) - 1
 }
 
 
 gibbs.reps <- 10000
-lambda <- lambda.init
 
 #Allocate space for samples
 beta.gibbs <-  matrix(0,nrow = p, ncol = gibbs.reps)
 z.gibbs <- array(0,dim = c(n,p, gibbs.reps))
-y.gibbs <- array(0, dim = c(n,p,gibbs.reps))
+y.gibbs <- list()
 lambda.gibbs <- matrix(0, n, gibbs.reps)
 N <- rep(0,gibbs.reps)
 num.distortions <- matrix(0, n, gibbs.reps)
@@ -97,25 +141,25 @@ for(r in 1:gibbs.reps){
   #Sample lambda
   #Here I assume independence between lambda_i and lambda_j, i!=j.
   for (j in 1:n){
-    cj <- lambda[j]
-    num.errors[j,r] <- rowSums(x[j,] != y[cj,])  
-    bad <- list()
-    for(l in 1:p){
-      if (z[j,l] == 0 ){
-        bad[[l]] <- which(y[,l] != x[j,l])
-      }
-    }
-    bad.all <- unique(unlist(bad))
-    good <- setdiff(1:n, bad)
-    lambda[j] <- sample(rep(good,2),1)
+      #cj <- lambda[j]
+      #num.errors[j,r] <- rowSums(x[j,] != y[cj,])  
+      y.comp <- matrix(unlist(t(t(y)*(1-z[j,]))),n,p, byrow= FALSE)
+      x.comp <- as.numeric(x[j,]*(1-z[j,]))
+      good <- apply(y.comp, FUN = function(x,y){ind <- is.na(x) ; x[ind] <- y[ind] ;identical(x,y)}, x = x.comp , 1) %>%
+              which()
+      #Need to fix NAs
+      lambda[j] <- sample(rep(good,2),1)
   }
+  
+
   
   num.clusters[,r] <-  table(table(lambda), useNA = "always")[1:4]
   #ppm[r] <- post.prob.match(lambda,lambda.star)
   #When and where to use reduced y's?
   
-  N[r] <- length(unique(lambda))
   lam.uni <- unique(lambda)
+  N[r] <- length(lam.uni)
+  
   
   #Sample beta
   for (l in 1:p){  
@@ -129,7 +173,9 @@ for(r in 1:gibbs.reps){
   #Sample theta
   #Should theta_lm FC in paper have an 'm' with y? I think so
   for(l in 1:p){
+    y[is.na(y[,l]),l] <- 100
     y.sums <- colSums(sapply(1:cats[l], FUN = function(x){x == 1+ y[lam.uni,l]}))
+    x[is.na(x[,l]),l] <- 100
     xz.sums <- colSums(sapply(1:cats[l], FUN = function(c){c == 1+ x[,l]})*z[,l])
     dir <- mu[[l]] + y.sums + xz.sums+ 1
     theta[[l]] <- rdirichlet(1,dir)
@@ -177,7 +223,7 @@ for(r in 1:gibbs.reps){
   #Save values
   beta.gibbs[,r] <- beta
   z.gibbs[,,r] <- z
-  y.gibbs[,,r] <- y
+  y.gibbs[[r]] <- y
   lambda.gibbs[,r] <- lambda
   num.distortions[,r] <- rowSums(z)
   
@@ -185,12 +231,17 @@ for(r in 1:gibbs.reps){
     end1 <- Sys.time()
     print(paste("Done with Gibbs Sample ", r, " of ", gibbs.reps, " in ", end1 - start1, sep = ""))
     start1<- Sys.time() 
-    }
+  }
+  if (r %% 1000 == 0){
+    print(paste("Saving first ", r, " samples.", sep = ""))
+    save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, 
+             num.distortions, num.errors, num.clusters, r,  file = "./italy_gibbs_output_take2.RData" )
+  }
 }
 end <- Sys.time()
 end-start  
 save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, 
-     num.distortions, num.errors, num.clusters, file = "./italy_gibbs_output.RData" )
+     num.distortions, num.errors, num.clusters, r, file = "./italy_gibbs_output_take2.RData" )
 
 
 load("./italy_gibbs_output.RData")
