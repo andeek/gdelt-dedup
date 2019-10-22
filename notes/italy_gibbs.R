@@ -23,8 +23,7 @@ italy1 <- rbind(italy08.1[1:250,], italy10.1[1:250,])
 IDs <- c(italy08$id[italy08$IREG ==1][1:250], italy10$id[italy10$IREG == 1][1:250])
 head(IDs)
 
-head(italy1)
-head(italy08[italy08$IREG==1,])
+
 
 
 
@@ -160,7 +159,6 @@ for(r in 1:gibbs.reps){
   lam.uni <- unique(lambda)
   N[r] <- length(lam.uni)
   
-  
   #Sample beta
   for (l in 1:p){  
     a.gibbs <- a[l] + sum(z[,l])
@@ -234,21 +232,28 @@ for(r in 1:gibbs.reps){
   }
   if (r %% 1000 == 0){
     print(paste("Saving first ", r, " samples.", sep = ""))
-    save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, 
-             num.distortions, num.errors, num.clusters, r,  file = "./italy_gibbs_output_take2.RData" )
+    save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, N,
+             num.distortions, num.errors, num.clusters, r,  file = "./italy_gibbs_output_take3.RData" )
   }
 }
 end <- Sys.time()
 end-start  
-save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, 
-     num.distortions, num.errors, num.clusters, r, file = "./italy_gibbs_output_take2.RData" )
+save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, N, 
+     num.distortions, num.errors, num.clusters, r, file = "./italy_gibbs_output_take3.RData" )
 
 
-load("./italy_gibbs_output.RData")
+load("./italy_gibbs_output_take2.RData")
+linked <- links(lambda.gibbs)
 plot(beta.gibbs[1,], type = "l")
 plot(beta.gibbs[2,], type = "l")
 plot(beta.gibbs[3,], type = "l")
 plot(beta.gibbs[4,], type = "l")
+
+
+dim(z.gibbs)
+
+z.prop <- apply(z.gibbs, FUN = mean, c(2,3))
+plot(z.prop[6,], type = "l")
 
 
 plot(num.clusters[1,], type = "l")
@@ -259,6 +264,75 @@ plot(num.clusters[4,], type = "l")
 
 dim(num.errors)
 dim(z.gibbs)
+ppm.actual <- function(lambda.gibbs){
+  gibbs.reps <- dim(lambda.gibbs)[2]
+  n <- dim(lambda.gibbs)[1]
+  ppm.real <- matrix(0,n,n)
+  for (i in 1:n){
+    lsi <- lambda.gibbs[i,]
+    for (j in 1:n){
+      lsj <- lambda.gibbs[j,]
+      ppm.real[i,j] <- sum(lsi == lsj)/gibbs.reps
+    }
+  }
+}
+
+ppm.real <- ppm.actual(lambda.gibbs)
+
+sdg <- sqrt(gibbs.reps*.01*.99*(1/gibbs.reps^2))
+hist(as.vector(ppm.real[ppm.real < 1]))
+abline(v= c(.01 + 2*sdg, .01 - 2*sdg), col = "red")
+quant <- quantile(ppm.real, .95)
+match.matrix <- ppm.real > quant
+
+#Calculate the false negative rate
+fnr <- function(lambda.star, mm){
+  n <- dim(mm)[1]
+  count.num <- 0
+  count.den <- 0
+  for (i in 1:(n-1)){
+    lsi <- lambda.star[i]
+    for (j in (i+1):n){
+      lsj <- lambda.star[j]
+      #If they match in truth, do they match in estimation?
+      if (lsi == lsj){
+        count.den <- count.den + 1
+        count.num <- count.num + mm[i,j]
+      }
+    }
+  }
+  1- count.num/count.den
+}
+
+#Calculate the false positive rate
+fpr <- function(lambda.star, mm){
+  n <- dim(mm)[1]
+  count.num <- 0
+  count.den <- 0
+  for (i in 1:(n-1)){
+    lsi <- lambda.star[i]
+    for (j in (i+1):n){
+      lsj <- lambda.star[j]
+      #If they match in truth, do they match in estimation?
+      if (lsi != lsj){
+        count.den <- count.den + 1
+        count.num <- count.num + mm[i,j]
+      }
+    }
+  }
+  count.num/count.den
+} 
+
+fnr(lambda.gibbs, match.matrix)
+fpr(lambda.gibbs, match.matrix)
+library(blink)
+?links
+
+lam.gs <- matrix(c(1,1,2,2,3,3,5,6,4,3,4,5,3,2,4,1,2,3,4,2), ncol=20,  nrow=4)
+
+
+
+linked <- links(lambda.gibbs)
 
 
 ncls <- table(table(lambda.star))[1:4]
