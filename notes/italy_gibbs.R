@@ -20,6 +20,8 @@ head(italy08)
 italy10.1 <- italy10[italy10$IREG == 1,-c(1,8,12)]
 italy08.1 <- italy08[italy08$IREG == 1, -c(1,8,12)]
 italy1 <- rbind(italy08.1[1:250,], italy10.1[1:250,])
+italy1 <- italy1[complete.cases(italy1),]
+
 IDs <- c(italy08$id[italy08$IREG ==1][1:250], italy10$id[italy10$IREG == 1][1:250])
 head(IDs)
 
@@ -43,13 +45,13 @@ italy1$SETT <- italy1$SETT - 1
 
 
 x <- italy1
-n <- length(IDs)
-N <- length(unique(IDs))
+n <- nrow(x)
+N <- nrow(x)
 
 #Create sensible lambda vector based off IDs
 lambda.star <- rep(0, n)
 for (u in unique(IDs)){
-  lambda.star[IDs == u] <- max(lambda.star)+1
+  lambda.star[which(IDs == u)] <- max(lambda.star) + 1
 }
 
 
@@ -99,18 +101,10 @@ b <- rep(.95, p)
 theta <- list()
 mu <-lapply(cats, FUN = function(x){rep(1/x, x)})
 theta.init <- mu 
-
-beta.init <- rep(.05,p)
-
-
-z <- matrix(rbinom(n*p, 1, beta.init), n,p)
-
-
+beta.init <- rep(.05, p)
+z <- matrix(rbinom(n*p, 1, beta.init), n, p)
 y <- x
 lambda <- 1:n
-
-
-
 
 for (l in 1:p){
   x.ind <- which(z[,l] == 1)
