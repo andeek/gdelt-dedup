@@ -1,8 +1,11 @@
-library(italy)
 library(dplyr)
 library(tidyr)
 library(gtools)
 library(utils)
+library(italy)
+
+
+# data stuff -----
 
 #PARENT is ???
 #SEX is sex
@@ -17,34 +20,19 @@ library(utils)
 #IREG is region
 
 #The only thing missing is highest education level obtained
-head(italy10)
-head(italy08)
+# head(italy10)
+# head(italy08)
 italy10.1 <- italy10[italy10$IREG == 1,-c(1,8,12)]
 italy08.1 <- italy08[italy08$IREG == 1, -c(1,8,12)]
 italy1 <- rbind(italy08.1[1:250,], italy10.1[1:250,])
 italy1 <- italy1[complete.cases(italy1),]
 
 IDs <- c(italy08$id[italy08$IREG ==1][1:250], italy10$id[italy10$IREG == 1][1:250])
-head(IDs)
-
-
-
-
-
+# head(IDs)
 cats <- apply(italy1, FUN = function(x)length(unique(x)), 2)
 p <- length(cats)
-cats
-italy1$PARENT <- italy1$PARENT -1 
-italy1$SEX <- italy1$SEX - 1
-#Year 0 will now correspond to 1909
-italy1$ANASC <- italy1$ANASC - 1909
-italy1$NASCREG <- italy1$NASCREG - 1
-italy1$CIT <- italy1$CIT - 1
-italy1$ACOM4C
-italy1$Q <- italy1$Q - 1
-italy1$QUAL <- italy1$QUAL - 1
-italy1$SETT <- italy1$SETT - 1
-
+# cats
+italy1 <- apply(italy1, 2, function(x) x - min(x)) #rescales
 
 x <- as.matrix(italy1)
 n <- nrow(x)
@@ -57,62 +45,67 @@ for (u in unique(IDs)){
 }
 
 
-#-------------------------------------------------------------------------------------
-
+# sampler ------------------------------------------------------------------------------------
 set.seed(2020)
 
 
 #Checks to see if x,y,z are valid combination for sampling of lambdas
-valid.xyz <- function(x,y,z){
-  if( is.null(dim(x))){
-    sum(x*(1-z) == y*(1-z))==p
-  }
-  else{
-  rowSums(x*(1-z) == y*(1-z))==p
-  }
-}
-
-
+# valid.xyz <- function(x,y,z){
+#   if( is.null(dim(x))){
+#     sum(x*(1-z) == y*(1-z))==p
+#   }
+#   else{
+#   rowSums(x*(1-z) == y*(1-z))==p
+#   }
+# }
 
 #This function calculates the overall probability of correctly clustering a point with another.
 #Lambda.star is the truth. Does not account for correctly not clustering a singleton.
-post.prob.match <- function(lambda, lambda.star){
-  n <- length(lambda)
-  uni.lamb <- unique(lambda.star)
-  u <- length(uni.lamb)
-  c<-0
-  prob <-0
-  for (j in 1:u){
-    same.inds <- which(lambda.star ==  uni.lamb[j])
-    group <- lambda[same.inds]
-    if (length(group) !=1){
-      combs <- combn(group, 2)
-      c <- c+ length(combs)/2
-      prob <- prob + sum(apply(combs, FUN = function(x){x[1] == x[2]}, 2))}
-  }
-  prob/c
-}
+# post.prob.match <- function(lambda, lambda.star){
+#   n <- length(lambda)
+#   uni.lamb <- unique(lambda.star)
+#   u <- length(uni.lamb)
+#   c<-0
+#   prob <-0
+#   for (j in 1:u){
+#     same.inds <- which(lambda.star ==  uni.lamb[j])
+#     group <- lambda[same.inds]
+#     if (length(group) !=1){
+#       combs <- combn(group, 2)
+#       c <- c+ length(combs)/2
+#       prob <- prob + sum(apply(combs, FUN = function(x){x[1] == x[2]}, 2))}
+#   }
+#   prob/c
+# }
 
 #Prior values
-a <- rep(.05,p)
+a <- rep(.05, p)
 b <- rep(.95, p)
 
 
 #Initialize values for Gibbbs Sampler
-theta <- list()
 mu <-lapply(cats, FUN = function(x){rep(1/x, x)})
-theta.init <- mu 
+theta <- mu 
 beta <- rep(.05, p)
 z <- matrix(rbinom(n*p, 1, beta), n, p)
-y <- x
-lambda <- 1:n
-
-for (l in 1:p){
-  x.ind <- which(z[,l] == 1)
-  y.ind <- lambda[x.ind]
-  y[y.ind,l] <- rmultinom(sum(z[,l]), 1, theta.init[[l]]) %>%
-    apply(FUN = function(x) which(x==1), 2) - 1
-}
+lambda <- sample(1:N, n, replace = TRUE)
+y <- matrix(0, nrow = N, ncol = p)
+# 
+# for (j.prime in 1:N){
+#   #The js are all j's in R_ij.prime
+#   js <- which(lambda == j.prime)
+#   len <- length(js)
+#   inds <- c()
+#   for(j in 1:len){
+#     which.z <- setdiff(which(z[js[j],]==0), inds)
+#     y[j.prime, which.z] <- x[js[j], which.z]
+#     inds <- union(inds, which.z)
+#     if (setequal(1:p, inds)){break}
+#   }
+#   inds.no <- setdiff(1:p, inds)
+#   y[j.prime, inds.no] <- lapply(inds.no, FUN = function(index){which(rmultinom(1, 1, theta[[index]]) == 1) - 1}) %>%
+#     unlist()
+# }
 
 
 gibbs.reps <- 10000
@@ -132,51 +125,6 @@ start <- Sys.time()
 start1 <- Sys.time()
 #Start Gibbs Sampler
 for(r in 1:gibbs.reps){
-  #Sample lambda
-  #Here I assume independence between lambda_i and lambda_j, i!=j.
-  for (j in 1:n){
-      #cj <- lambda[j]
-      #num.errors[j,r] <- rowSums(x[j,] != y[cj,])  
-      y.comp <- matrix(unlist(t(t(y)*(1-z[j,]))),n,p, byrow= FALSE)
-      x.comp <- as.numeric(x[j,]*(1-z[j,]))
-      # good <- apply(y.comp, FUN = function(x,y){ind <- is.na(x) ; x[ind] <- y[ind] ;identical(x,y)}, x = x.comp , 1) %>%
-      #         which()
-      
-      p_lambda <- rowSums(abs(y.comp - matrix(rep(x.comp, nrow(y.comp)), nrow(y.comp), byrow = TRUE) )) == 0
-      
-      if(sum(p_lambda) == 1) {
-        lambda[j] <- which(p_lambda) 
-      } else {
-        lambda[j] <- sample(which(p_lambda), 1)
-      }
-  }
-  
-  num.clusters[, r] <-  table(table(lambda), useNA = "always")[1:4]
-  #ppm[r] <- post.prob.match(lambda,lambda.star)
-  #When and where to use reduced y's?
-  
-  #lam.uni <- unique(lambda)
-  #N[r] <- length(lam.uni)
-  
-  #Sample beta
-   
-  a.gibbs <- a + colSums(z)
-  b.gibbs <- b + colSums(1-z)
-  beta <- rbeta(p, a.gibbs, b.gibbs)
-  
-
-  
-    
-  #Sample theta
-  #Should theta_lm FC in paper have an 'm' with y? I think so
-  for(l in 1:p){
-    y.sums <- colSums(sapply(1:cats[l], FUN = function(x){x == 1+ y[lambda,l]}))
-    xz.sums <- colSums(sapply(1:cats[l], FUN = function(c){c == 1+ x[,l]})*z[,l])
-    dir <- mu[[l]] + y.sums + xz.sums+ 1
-    theta[[l]] <- rdirichlet(1,dir)
-  }
-
-  
   #Sample y's
   #I think the paper gets the indexing of j.prime incorrect (should go to n, not N)
   #So I did what I think the paper is trying to say.
@@ -184,7 +132,6 @@ for(r in 1:gibbs.reps){
   #This approach does not lead to interpretting y, but I don't think we should care,
   #because it does not affect lambda, and we just want to know whether two x's point 
   #to the same y, not which exact label it is (which is arbitrary)
-  
   for (j.prime in 1:N){
     #The js are all j's in R_ij.prime
     js <- which(lambda == j.prime)
@@ -198,17 +145,37 @@ for(r in 1:gibbs.reps){
     }
     inds.no <- setdiff(1:p, inds)
     y[j.prime, inds.no] <- lapply(inds.no, FUN = function(index){which(rmultinom(1, 1, theta[[index]]) == 1) - 1}) %>%
-        unlist()
+      unlist()
   }
-
+  
+  #Sample beta
+  a.gibbs <- a + colSums(z)
+  b.gibbs <- b + colSums(1-z)
+  beta <- rbeta(p, a.gibbs, b.gibbs)
+  
+  #Sample theta
+  #Should theta_lm FC in paper have an 'm' with y? I think so
+  y_ordered <- y[lambda, ]
+  xz <- x*z
+  for(l in 1:p){
+    y.sums <- as.data.frame(table(y_ordered[, l] + 1))
+    xz.sums <- as.data.frame(table(xz[, l]))
+    
+    sums <- merge(y.sums, xz.sums, by = "Var1", all.x = TRUE)
+    mu_sums <- merge(data.frame(Var1 = 1:length(mu[[l]]), mu = mu[[l]]),
+                     sums, by = "Var1", all.x = TRUE)
+    theta[[l]] <- rdirichlet(1, rowSums(sums[, -1], na.rm = TRUE) + 1)
+  }
+  
   #Sample z's
   #This one doesn't sit well with me. 
   #There should be an m for x, yes?
   for (l in 1:p){
     good <- x[,l] == y[lambda,l]
-    z[!good ,l] <- 1
-    prodm <- matrix(0, n, cats[l])
+    z[!good, l] <- 1
     x.m <- sapply(1:cats[l], FUN = function(c){c == 1+ x[,l]})
+    x.m <- table(x[, l])
+    
     prodm <- t(apply(x.m, FUN = function(x){theta[[l]]^x},1))
     prod <- apply(prodm, FUN= prod, 1)
     p_num <- beta[l]*prod
@@ -217,12 +184,32 @@ for(r in 1:gibbs.reps){
   }
   
   
+  #Sample lambda
+  #Here I assume independence between lambda_i and lambda_j, i!=j.
+  for (j in 1:n){
+      y.comp <- matrix(unlist(t(t(y)*(1-z[j,]))), n, p, byrow= FALSE)
+      x.comp <- as.numeric(x[j,]*(1-z[j,]))
+      p_lambda <- rowSums(abs(y.comp - matrix(rep(x.comp, nrow(y.comp)), nrow(y.comp), byrow = TRUE))) == 0
+      
+      if(sum(p_lambda) == 1) {
+        lambda[j] <- which(p_lambda) 
+      } else {
+        lambda[j] <- sample(which(p_lambda), 1)
+      }
+  }
+    
   #Save values
   beta.gibbs[,r] <- beta
   z.gibbs[,,r] <- z
   y.gibbs[[r]] <- y
   lambda.gibbs[,r] <- lambda
   num.distortions[,r] <- rowSums(z)
+  num.clusters[, r] <-  table(table(lambda), useNA = "always")[1:4]
+  #ppm[r] <- post.prob.match(lambda,lambda.star)
+  #When and where to use reduced y's?
+  
+  #lam.uni <- unique(lambda)
+  #N[r] <- length(lam.uni)
   
   if(r %% 10 == 0){
     end1 <- Sys.time()
