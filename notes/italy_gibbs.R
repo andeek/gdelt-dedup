@@ -139,15 +139,21 @@ for(r in 1:gibbs.reps){
       #num.errors[j,r] <- rowSums(x[j,] != y[cj,])  
       y.comp <- matrix(unlist(t(t(y)*(1-z[j,]))),n,p, byrow= FALSE)
       x.comp <- as.numeric(x[j,]*(1-z[j,]))
-      good <- apply(y.comp, FUN = function(x,y){ind <- is.na(x) ; x[ind] <- y[ind] ;identical(x,y)}, x = x.comp , 1) %>%
-              which()
+      # good <- apply(y.comp, FUN = function(x,y){ind <- is.na(x) ; x[ind] <- y[ind] ;identical(x,y)}, x = x.comp , 1) %>%
+      #         which()
+      
+      p_lambda <- rowSums(abs(y.comp - matrix(rep(x.comp, nrow(y.comp)), nrow(y.comp), byrow = TRUE) )) == 0
+      
+      if(sum(p_lambda) == 1) {
+        lambda[j] <- which(p_lambda) 
+      } else {
+        lambda[j] <- sample(which(p_lambda), 1)
+      }
       #Need to fix NAs
-      lambda[j] <- sample(rep(good,2),1)
+      # lambda[j] <- sample(rep(good,2),1)
   }
   
-
-  
-  num.clusters[,r] <-  table(table(lambda), useNA = "always")[1:4]
+  num.clusters[, r] <-  table(table(lambda), useNA = "always")[1:4]
   #ppm[r] <- post.prob.match(lambda,lambda.star)
   #When and where to use reduced y's?
   
