@@ -1,6 +1,8 @@
 library(italy)
 library(dplyr)
 library(tidyr)
+library(gtools)
+library(utils)
 
 #PARENT is ???
 #SEX is sex
@@ -44,7 +46,7 @@ italy1$QUAL <- italy1$QUAL - 1
 italy1$SETT <- italy1$SETT - 1
 
 
-x <- italy1
+x <- as.matrix(italy1)
 n <- nrow(x)
 N <- nrow(x)
 
@@ -56,8 +58,7 @@ for (u in unique(IDs)){
 
 
 #-------------------------------------------------------------------------------------
-library(gtools)
-library(utils)
+
 set.seed(2020)
 
 
@@ -101,8 +102,8 @@ b <- rep(.95, p)
 theta <- list()
 mu <-lapply(cats, FUN = function(x){rep(1/x, x)})
 theta.init <- mu 
-beta.init <- rep(.05, p)
-z <- matrix(rbinom(n*p, 1, beta.init), n, p)
+beta <- rep(.05, p)
+z <- matrix(rbinom(n*p, 1, beta), n, p)
 y <- x
 lambda <- 1:n
 
@@ -121,7 +122,7 @@ beta.gibbs <-  matrix(0,nrow = p, ncol = gibbs.reps)
 z.gibbs <- array(0,dim = c(n,p, gibbs.reps))
 y.gibbs <- list()
 lambda.gibbs <- matrix(0, n, gibbs.reps)
-N <- rep(0,gibbs.reps)
+#N <- rep(0,gibbs.reps)
 num.distortions <- matrix(0, n, gibbs.reps)
 num.errors <- matrix(0, n , gibbs.reps)
 num.errors.star <- matrix(0, n, gibbs.reps)
@@ -137,10 +138,8 @@ for(r in 1:gibbs.reps){
       #cj <- lambda[j]
       #num.errors[j,r] <- rowSums(x[j,] != y[cj,])  
       y.comp <- matrix(unlist(t(t(y)*(1-z[j,]))),n,p, byrow= FALSE)
-      x.comp <- as.numeric(x[j,]*(1-z[j,]))
-      good <- apply(y.comp, FUN = function(x,y){ind <- is.na(x) ; x[ind] <- y[ind] ;identical(x,y)}, x = x.comp , 1) %>%
-              which()
-      #Need to fix NAs
+      x.comp <- matrix(as.numeric(x[j,]*(1-z[j,])), n, p, byrow =TRUE)
+      good <- which(rowSums(abs(x.comp - y.comp)) ==0)
       lambda[j] <- sample(rep(good,2),1)
   }
   
@@ -150,24 +149,22 @@ for(r in 1:gibbs.reps){
   #ppm[r] <- post.prob.match(lambda,lambda.star)
   #When and where to use reduced y's?
   
-  lam.uni <- unique(lambda)
-  N[r] <- length(lam.uni)
+  #lam.uni <- unique(lambda)
+  #N[r] <- length(lam.uni)
   
   #Sample beta
-  for (l in 1:p){  
-    a.gibbs <- a[l] + sum(z[,l])
-    b.gibbs <- b[l] + sum(1-z[,l])
-    beta[l] <- rbeta(1, a.gibbs, b.gibbs)
-  }
+   
+  a.gibbs <- a + colSums(z)
+  b.gibbs <- b + colSums(1-z)
+  beta <- rbeta(p, a.gibbs, b.gibbs)
+  
 
   
     
   #Sample theta
   #Should theta_lm FC in paper have an 'm' with y? I think so
   for(l in 1:p){
-    y[is.na(y[,l]),l] <- 100
-    y.sums <- colSums(sapply(1:cats[l], FUN = function(x){x == 1+ y[lam.uni,l]}))
-    x[is.na(x[,l]),l] <- 100
+    y.sums <- colSums(sapply(1:cats[l], FUN = function(x){x == 1+ y[lambda,l]}))
     xz.sums <- colSums(sapply(1:cats[l], FUN = function(c){c == 1+ x[,l]})*z[,l])
     dir <- mu[[l]] + y.sums + xz.sums+ 1
     theta[[l]] <- rdirichlet(1,dir)
@@ -181,30 +178,32 @@ for(r in 1:gibbs.reps){
   #This approach does not lead to interpretting y, but I don't think we should care,
   #because it does not affect lambda, and we just want to know whether two x's point 
   #to the same y, not which exact label it is (which is arbitrary)
-  for (j.prime in 1:N[r]){
+  
+  for (j.prime in 1:N){
     #The js are all j's in R_ij.prime
-    which.y <- lam.uni[j.prime]
-    js <- which(lambda == which.y)
+    js <- which(lambda == j.prime)
     len <- length(js)
-    for (l in 1:p){
-      if (sum(z[js,l]) != len){
-        ind <- js[z[js,l]==0][1]
-        y[which.y,l] <- x[ind, l]
-      } else { 
-        y[which.y,l] <-  rmultinom(1, 1, theta[[l]]) %>%
-          apply(FUN = function(x) which(x==1), 2) - 1
+    inds <- c()
+    for(j in 1:len){
+      which.z <- setdiff(which(z[js[j],]==0), inds)
+      y[j.prime, which.z] <- x[js[j], which.z]
+      inds <- union(inds, which.z)
+      if (setequal(1:p, inds)){break}
     }
+    inds.no <- setdiff(1:p, inds)
+    y[j.prime, inds.no] <- lapply(inds.no, FUN = function(index){which(rmultinom(1, 1, theta[[index]]) == 1) - 1}) %>%
+        unlist()
   }
-  }
+
   #Sample z's
+  #This one doesn't sit well with me. 
+  #There should be an m for x, yes?
   for (l in 1:p){
     good <- x[,l] == y[lambda,l]
     z[!good ,l] <- 1
     prodm <- matrix(0, n, cats[l])
     x.m <- sapply(1:cats[l], FUN = function(c){c == 1+ x[,l]})
-    for (m in 1:cats[l]){
-      prodm[,m] <- theta[[l]][m]^x.m[,m]
-    }
+    prodm <- t(apply(x.m, FUN = function(x){theta[[l]]^x},1))
     prod <- apply(prodm, FUN= prod, 1)
     p_num <- beta[l]*prod
     p_den <- beta[l]*prod + (1-beta[l])
@@ -226,17 +225,18 @@ for(r in 1:gibbs.reps){
   }
   if (r %% 1000 == 0){
     print(paste("Saving first ", r, " samples.", sep = ""))
-    save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, N,
+    save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, 
              num.distortions, num.errors, num.clusters, r,  file = "./italy_gibbs_output_take3.RData" )
   }
 }
 end <- Sys.time()
 end-start  
-save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, N, 
+save(beta.gibbs, z.gibbs, y.gibbs, lambda.gibbs, 
      num.distortions, num.errors, num.clusters, r, file = "./italy_gibbs_output_take3.RData" )
 
 
 load("./italy_gibbs_output_take2.RData")
+library(blink)
 linked <- links(lambda.gibbs)
 plot(beta.gibbs[1,], type = "l")
 plot(beta.gibbs[2,], type = "l")
@@ -269,6 +269,7 @@ ppm.actual <- function(lambda.gibbs){
       ppm.real[i,j] <- sum(lsi == lsj)/gibbs.reps
     }
   }
+  return(ppm.real)
 }
 
 ppm.real <- ppm.actual(lambda.gibbs)
@@ -317,8 +318,8 @@ fpr <- function(lambda.star, mm){
   count.num/count.den
 } 
 
-fnr(lambda.gibbs, match.matrix)
-fpr(lambda.gibbs, match.matrix)
+fnr(lambda.star, match.matrix)
+fpr(lambda.star, match.matrix)
 library(blink)
 ?links
 
