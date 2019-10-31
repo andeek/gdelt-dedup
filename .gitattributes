@@ -1,0 +1,1 @@
+data/gdelt/westafrica_conflict_evts_1979-2019_gdelt.csv filter=lfs diff=lfs merge=lfs -text

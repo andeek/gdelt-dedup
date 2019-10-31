@@ -39,3 +39,8 @@ rsconnect/
 
 
 .DS_store
+
+# big files
+data/gdelt/raw/*
+data/gdelt/*.zip
+
