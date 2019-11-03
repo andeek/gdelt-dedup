@@ -1,0 +1,96 @@
+---
+title: "Monthly Report on \"An Extensible Model for Deduplication of the GDELT Events Database\""
+author: "Andee Kaplan (andee.kaplan@colostate.edu; 832-526-7947)"
+date: October 2019
+output: pdf_document
+bibliography: refs.bib
+---
+
+# Progress and Plans
+
+1. Description of progress made against each deliverable during the reporting period
+
+    Casey has written `R` code to compare the two models under consideration. He has run the Steorts model on a test data set and is continuing to improve the speed of the code.
+    
+    Additionally, I have pulled the West African GDELT data from the website and compiled into a single csv file. I am currently exploring appropriate blocking variables for the data that will be used for the record linkage model.
+
+2. Brief description of significant results
+    
+    Casey's work has been focused on comparing the methods on a benchmark dataset from the Italian Survey on Household and Wealth which includes the 2008 and 2010 surveys. This dataset contains ground truth, and so serves as a method of comparison between methods. Additionally, The Steorts method has been performed on this dataset, so he is able to compare our results to ensure the code is written correctly.
+    
+    ```{r, echo = FALSE, message = FALSE}
+    # libraries
+    library(tidyverse)
+    library(scales)
+    ```
+
+    ```{r, echo = FALSE, warning = FALSE, message = FALSE}
+    # load data
+    gdelt <- read_csv("../data/gdelt/westafrica_conflict_evts_1979-2019_gdelt.csv") %>%
+      filter(Year != "Year")
+    
+    dates <- as.Date(gdelt$SQLDATE, format = "%Y%M%d")
+    ```
+    
+    Additionally, we have explored the possibilities of different blocking variables for the GDELT Data. The data we have downloaded ranges in date from `r min(dates, na.rm = TRUE)` to `r max(dates, na.rm = TRUE)`, and there are `r comma(nrow(gdelt))` records to be deduplicated. We have `r ncol(gdelt)` columns to work with, and they are
+    
+    ```{r}
+    names(gdelt)
+    ```
+    
+    From these, we will use `MonthYear`, `ActionGeo_CountryCode` (the country that the action occured in), and `EventRootCode` (the broad event type) as blocking variables, which leads to the following distribution of block sizes.
+
+    
+    ```{r, echo = FALSE, message = FALSE, fig.height = 2.5}
+    # potential blocking
+    gdelt %>%
+      group_by(MonthYear, ActionGeo_CountryCode, EventRootCode) %>%
+      summarise(count = n()) -> blocks
+    
+    blocks %>%
+      filter(count > 1) %>%
+      ggplot() +
+      geom_histogram(aes(count))
+    
+    blocks %>%
+      filter(count > 1 & count <= 2000) %>%
+      ggplot() +
+      geom_histogram(aes(count))
+    ```
+    
+    There are `r comma(sum(blocks$count > 1))` blocks that result, with `r sum(blocks$count > 2000)` over $2,000$ records within them, which can lead to computational challenges.
+
+3. Planned activities for the following reporting period
+
+    We plan to start running a record linkage model on the GDELT data in November.
+
+
+4. List of any LAS-funded trips during reporting period, with description of work presented
+    
+    None.
+
+5. Description of any significant meetings/events held (e.g., a focused discovery activity, LAS Symposium) or conducted related to this task
+
+    Casey and I continue to meet weekly for one hour.
+
+
+# Issues
+
+1. Progress on/results obtained related to previously identified problem areas
+
+    None.
+
+2. Proposed significant changes to your methodology, goals, milestones, or deliverables
+
+    None.
+
+3. New challenges affecting technical performance or schedule, with background
+
+    None.
+
+
+4. Has anything happened to impact your anticipated schedule?
+
+    Casey has broken his collar bone and has just had surgery (11/2) to repair. It is unclear how long he will be impaired, but this may make our progress slower than anticipated.
+
+
