@@ -1,0 +1,40 @@
+Data settings
+-------------
+  * Using data files located at '/projects/schafecs@colostate.edu/geco/WAdat79.csv'
+  * The record identifier attribute is 'rowname'
+  * There is no file identifier
+  * There is no entity identifier
+  * The matching attributes are 'MonthYear', 'Actor1Code', 'Actor1Name', 'Actor2Code', 'Actor2Name', 'IsRootEvent', 'EventBaseCode', 'Actor1Geo_Type', 'Actor1Geo_CountryCode', 'Actor2Geo_Type', 'Actor2Geo_CountryCode', 'ActionGeo_Type', 'ActionGeo_CountryCode'
+
+Hyperparameter settings
+-----------------------
+  * 'MonthYear' (id=0) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor1Code' (id=1) with LevenshteinSimilarityFn(threshold=7.0, maxSimilarity=10.0) and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor1Name' (id=2) with LevenshteinSimilarityFn(threshold=7.0, maxSimilarity=10.0) and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor2Code' (id=3) with LevenshteinSimilarityFn(threshold=7.0, maxSimilarity=10.0) and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor2Name' (id=4) with LevenshteinSimilarityFn(threshold=7.0, maxSimilarity=10.0) and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'IsRootEvent' (id=5) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'EventBaseCode' (id=6) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor1Geo_Type' (id=7) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor1Geo_CountryCode' (id=8) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor2Geo_Type' (id=9) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'Actor2Geo_CountryCode' (id=10) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'ActionGeo_Type' (id=11) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * 'ActionGeo_CountryCode' (id=12) with ConstantSimilarityFn and BetaShapeParameters(alpha=10.0, beta=1000.0)
+  * Size of latent population is 679
+
+Partition function settings
+---------------------------
+  * KDTreePartitioner(numLevels=2, attributeIds=[0,6])
+
+Project settings
+----------------
+  * Using randomSeed=319158
+  * Using expectedMaxClusterSize=20
+  * Saving Markov chain and complete final state to '/projects/schafecs@colostate.edu/geco/WA_results/'
+  * Saving Spark checkpoints to '/scratch/summit/schafecs@colostate.edu/tmp/spark_checkpoint_WA/'
+
+Scheduled steps
+---------------
+  * SampleStep: Evolving the chain from saved state with sampleSize=50000, burninInterval=0, thinningInterval=1 and sampler=PCG-I
+  * SummarizeStep: Calculating summary quantities {'cluster-size-distribution', 'partition-sizes'} along the chain for iterations >= 0
