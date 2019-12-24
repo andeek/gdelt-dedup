@@ -6,9 +6,6 @@ library(dplyr) # data manip
 gdelt <- read_csv("data/gdelt/westafrica_conflict_evts_1979-2019_gdelt.csv")
 gdelt <- gdelt %>% filter(Year != "Year")
 
-## load conf and run file templates
-conf <- read_file("scripts/gdelt_dedup/dblink/template.conf")
-run <- read_file("scripts/gdelt_dedup/dblink/run_template.sh")
 
 ## perform blocking -- split data by years
 gdelt_years <- split(gdelt, gdelt$Year)
@@ -26,11 +23,15 @@ for(year in names(gdelt_years)) {
   n_nodes <- 2^n_levels
 
   # get time
-  n_hours <- min(ceiling(n/150), 168) # max time = 1 week
+  n_hours <- min(ceiling(n/100), 168) # max time = 1 week
 
   # save each year as its own csv
   write_csv(gdelt_years[[year]], paste0("data/gdelt/blocked/", year, ".csv"))
-
+  
+  ## load conf and run file templates
+  conf <- read_file("scripts/gdelt_dedup/dblink/template.conf")
+  run <- read_file("scripts/gdelt_dedup/dblink/run_template.sh")
+  
   # create and write the .conf file
   conf <- gsub("REPLACE_DATAFILE", paste0(year, ".csv"), conf)
   conf <- gsub("REPLACE_NROW", n, conf)
@@ -39,7 +40,7 @@ for(year in names(gdelt_years)) {
   write_file(conf, paste0("scripts/gdelt_dedup/dblink/", year, ".conf"))
 
   # create and write the run .sh file
-  run <- gsub("REPLACE_NNODES", n_levels, run)
+  run <- gsub("REPLACE_NNODES", n_nodes, run)
   run <- gsub("REPLACE_NAME", year, run)
   run <- gsub("REPLACE_TIME", paste0(n_hours, ":00:00"), run)
   run <- gsub("REPLACE_CONF", paste0(year, ".conf"), run)

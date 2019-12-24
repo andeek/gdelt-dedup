@@ -2,13 +2,13 @@
 #SBATCH --partition=shas
 #SBATCH --qos condo
 #SBATCH -A csu-summit-sta
-#SBATCH --nodes=2
+#SBATCH --nodes=4
 #SBATCH --output=logs/%x_%a_%j.out
 #SBATCH --error=logs/%x_%a_%j.err
 #SBATCH --mail-type=end
 #SBATCH --mail-user=akaplan@colostate.edu
 #SBATCH --job-name=1979
-#SBATCH --time=5:00:00
+#SBATCH --time=7:00:00
 #SBATCH --mem=10000
 
 #

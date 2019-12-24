@@ -2,13 +2,13 @@
 #SBATCH --partition=shas
 #SBATCH --qos condo
 #SBATCH -A csu-summit-sta
-#SBATCH --nodes=2
+#SBATCH --nodes=64
 #SBATCH --output=logs/%x_%a_%j.out
 #SBATCH --error=logs/%x_%a_%j.err
 #SBATCH --mail-type=end
 #SBATCH --mail-user=akaplan@colostate.edu
-#SBATCH --job-name=1979
-#SBATCH --time=5:00:00
+#SBATCH --job-name=2004
+#SBATCH --time=168:00:00
 #SBATCH --mem=10000
 
 #
@@ -31,4 +31,4 @@ $SPARK_HOME/bin/spark-submit \
 --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=log4j.properties" \
 --conf "spark.driver.extraClassPath=/projects/akaplan\@colostate.edu/dblink-assembly-0.1.jar" \
 /projects/akaplan\@colostate.edu/dblink-assembly-0.1.jar \
-1979.conf
+2004.conf
