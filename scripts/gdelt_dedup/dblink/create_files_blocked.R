@@ -1,5 +1,6 @@
 ## load libraries
 library(readr) # files manip
+library(dplyr) # data manip
 
 ## load gdelt data
 gdelt <- read_csv("data/gdelt/westafrica_conflict_evts_1979-2019_gdelt.csv")

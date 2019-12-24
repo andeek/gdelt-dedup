@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=REPLACE_NNODES
-#SBATCH --output=../Logs/%x_%a_%j.out
-#SBATCH --error=../Logs/%x_%a_%j.err
+#SBATCH --output=logs/%x_%a_%j.out
+#SBATCH --error=logs/%x_%a_%j.err
 #SBATCH --mail-type=end
 #SBATCH --mail-user=akaplan@colostate.edu
 #SBATCH --job-name=REPLACE_NAME
