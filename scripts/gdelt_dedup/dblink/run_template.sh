@@ -1,4 +1,7 @@
 #!/bin/bash
+#SBATCH --partition=shas
+#SBATCH --qos condo
+#SBATCH -A csu-summit-sta
 #SBATCH --nodes=REPLACE_NNODES
 #SBATCH --output=logs/%x_%a_%j.out
 #SBATCH --error=logs/%x_%a_%j.err
@@ -6,8 +9,6 @@
 #SBATCH --mail-user=akaplan@colostate.edu
 #SBATCH --job-name=REPLACE_NAME
 #SBATCH --time=REPLACE_TIME
-#SBATCH --partition=shas
-#SBATCH --qos condo
 #SBATCH --mem=10000
 
 #
