@@ -5,7 +5,7 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=akaplan@colostate.edu
 #SBATCH --job-name=1979
-#SBATCH --time=4.52666666666667:00:00
+#SBATCH --time=5:00:00
 #SBATCH --partition=shas
 #SBATCH --qos condo
 #SBATCH --mem=10000
